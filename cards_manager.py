@@ -11,7 +11,7 @@ from PIL import Image
 FTP_HOST = "185.51.188.85"
 FTP_USER = "pairfect"
 FTP_PASS = "65Q6sjIhrF"
-FTP_DATA_DIR = "games"
+FTP_DATA_DIR = "public_html/games"
 
 # Jelszó beállítása
 CORRECT_PASSWORD = "pairfect2024"
@@ -107,6 +107,29 @@ def connect_ftp():
         st.error(f"Hiba az FTP kapcsolódás során: {str(e)}")
         raise e
 
+def create_directory_if_not_exists(ftp, path):
+    """Könyvtár létrehozása az FTP szerveren, ha nem létezik"""
+    try:
+        # Próbáljuk meg elérni a könyvtárat
+        ftp.cwd(path)
+        # Ha sikerült, lépjünk vissza a gyökérbe
+        ftp.cwd('/')
+    except:
+        # Ha nem sikerült elérni, hozzuk létre a könyvtárakat
+        current = ''
+        for folder in path.split('/'):
+            if folder:
+                current += '/' + folder
+                try:
+                    ftp.cwd(current)
+                except:
+                    try:
+                        ftp.mkd(current)
+                        st.info(f"Könyvtár létrehozva: {current}")
+                    except Exception as e:
+                        st.error(f"Nem sikerült létrehozni a könyvtárat: {current}, hiba: {str(e)}")
+                        raise
+
 def load_config():
     """JSON konfiguráció betöltése FTP-ről"""
     try:
@@ -119,8 +142,11 @@ def load_config():
             current_dir = ftp.pwd()
             st.info(f"FTP kezdő könyvtár: {current_dir}")
             
+            # Könyvtárak létrehozása, ha nem léteznek
+            create_directory_if_not_exists(ftp, '/public_html/games')
+            
             # Belépés a public_html/games mappába
-            ftp.cwd('public_html/games')
+            ftp.cwd('/public_html/games')
             
             # Debug: Kiírjuk az új könyvtárat
             new_dir = ftp.pwd()
@@ -130,11 +156,53 @@ def load_config():
             st.write("Könyvtár tartalma:")
             st.write(ftp.nlst())
             
-            # data.json letöltése
-            st.info(f"data.json betöltése innen: ftp://{FTP_HOST}{new_dir}/data.json")
-            ftp.retrbinary('RETR data.json', config_buffer.write)
-            config_buffer.seek(0)
-            config = json.loads(config_buffer.read().decode('utf-8'))
+            try:
+                # data.json letöltése
+                st.info(f"data.json betöltése innen: ftp://{FTP_HOST}{new_dir}/data.json")
+                ftp.retrbinary('RETR data.json', config_buffer.write)
+                config_buffer.seek(0)
+                config = json.loads(config_buffer.read().decode('utf-8'))
+            except:
+                st.warning("Konfiguráció nem található, alapértelmezett beállítások létrehozása...")
+                config = {
+                    "games": [],
+                    "categories": {
+                        "math": {
+                            "name": "Tudomány",
+                            "color": "from-blue-500 to-purple-500"
+                        },
+                        "history": {
+                            "name": "Történelem",
+                            "color": "from-orange-500 to-red-500"
+                        },
+                        "language": {
+                            "name": "Nyelvtanulás",
+                            "color": "from-green-500 to-teal-500"
+                        },
+                        "literature": {
+                            "name": "Irodalom",
+                            "color": "from-pink-500 to-rose-500"
+                        },
+                        "programming": {
+                            "name": "Informatika",
+                            "color": "from-violet-500 to-purple-500"
+                        },
+                        "art": {
+                            "name": "Művészet",
+                            "color": "from-yellow-500 to-orange-500"
+                        },
+                        "music": {
+                            "name": "Szabadidő",
+                            "color": "from-red-500 to-pink-500"
+                        }
+                    }
+                }
+                
+                # Alapértelmezett konfiguráció mentése
+                json_str = json.dumps(config, indent=4, ensure_ascii=False)
+                json_buffer = io.BytesIO(json_str.encode('utf-8'))
+                ftp.storbinary('STOR data.json', json_buffer)
+                st.success("Alapértelmezett konfiguráció létrehozva az FTP szerveren.")
             
             # FTP kapcsolat bezárása
             ftp.quit()
@@ -142,57 +210,8 @@ def load_config():
             return config
             
         except Exception as e:
-            st.warning("Konfiguráció nem található, alapértelmezett beállítások létrehozása...")
-            config = {
-                "games": [],
-                "categories": {
-                    "math": {
-                        "name": "Tudomány",
-                        "color": "from-blue-500 to-purple-500"
-                    },
-                    "history": {
-                        "name": "Történelem",
-                        "color": "from-orange-500 to-red-500"
-                    },
-                    "language": {
-                        "name": "Nyelvtanulás",
-                        "color": "from-green-500 to-teal-500"
-                    },
-                    "literature": {
-                        "name": "Irodalom",
-                        "color": "from-pink-500 to-rose-500"
-                    },
-                    "programming": {
-                        "name": "Informatika",
-                        "color": "from-violet-500 to-purple-500"
-                    },
-                    "art": {
-                        "name": "Művészet",
-                        "color": "from-yellow-500 to-orange-500"
-                    },
-                    "music": {
-                        "name": "Szabadidő",
-                        "color": "from-red-500 to-pink-500"
-                    }
-                }
-            }
-            
-            # Ha nem létezik a data.json, létrehozzuk az alapértelmezett konfigurációval
-            try:
-                json_str = json.dumps(config, indent=4, ensure_ascii=False)
-                json_buffer = io.BytesIO(json_str.encode('utf-8'))
-                
-                ftp.cwd('public_html/games')
-                ftp.storbinary('STOR data.json', json_buffer)
-                
-                # FTP kapcsolat bezárása
-                ftp.quit()
-                
-                st.success("Alapértelmezett konfiguráció létrehozva az FTP szerveren.")
-            except Exception as e:
-                st.error(f"Nem sikerült létrehozni az alapértelmezett konfigurációt az FTP szerveren: {str(e)}")
-            
-            return config
+            st.error(f"Hiba a könyvtár kezelése során: {str(e)}")
+            return None
             
     except Exception as e:
         st.error(f"FTP kapcsolódási hiba: {str(e)}")
