@@ -235,10 +235,10 @@ def generate_rss_feed(config):
         rss_content += f"""
     <item>
       <title>{game_name}</title>
-      <link>https://pairfect.hu/game/{game.get("file", "").replace(".txt", "")}</link>
+      <link>https://pairfect.hu/game.html?game={game.get("file", "")}</link>
       <description>{game_description} ({config['categories'][game.get('category', '')]['name']} kategória, nehézség: {game.get('defaultDifficulty', 1)})</description>
       <pubDate>{pub_date}</pubDate>
-      <guid>{game.get("file", "").replace(".txt", "")}</guid>
+      <guid>{game.get("file", "")}</guid>
     </item>"""
 
     rss_content += """
