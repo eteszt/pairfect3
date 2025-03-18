@@ -202,6 +202,36 @@ def load_config():
         st.error(f"FTP kapcsolódási hiba: {str(e)}")
         return None
 
+def generate_rss_feed(config):
+    """RSS feed generálása az utolsó 10 játékból"""
+    rss_content = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Pairfect Játékok</title>
+    <link>https://pairfect.hu</link>
+    <description>Új játékok a Pairfect platformon</description>
+    <language>hu</language>"""
+
+    # Az utolsó 10 játék kiválasztása
+    games = sorted(config.get("games", []), key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
+    
+    for game in games:
+        pub_date = datetime.fromtimestamp(game.get("timestamp", 0)).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        rss_content += f"""
+    <item>
+      <title>{game.get("name", "")}</title>
+      <link>https://pairfect.hu/game/{game.get("id", "")}</link>
+      <description>{game.get("description", "")}</description>
+      <pubDate>{pub_date}</pubDate>
+      <guid>{game.get("id", "")}</guid>
+    </item>"""
+
+    rss_content += """
+  </channel>
+</rss>"""
+    
+    return rss_content
+
 def save_config(config):
     """Konfiguráció mentése az FTP szerverre"""
     try:
@@ -219,10 +249,20 @@ def save_config(config):
             # data.json feltöltése
             ftp.storbinary('STOR data.json', json_buffer)
             
+            # RSS feed generálása és feltöltése
+            rss_content = generate_rss_feed(config)
+            rss_buffer = io.BytesIO(rss_content.encode('utf-8'))
+            
+            # Visszalépés a public_html mappába
+            ftp.cwd('..')
+            
+            # feed.xml feltöltése a public_html mappába
+            ftp.storbinary('STOR feed.xml', rss_buffer)
+            
             # FTP kapcsolat bezárása
             ftp.quit()
             
-            st.success("Konfiguráció sikeresen mentve az FTP szerverre.")
+            st.success("Konfiguráció és RSS feed sikeresen mentve az FTP szerverre.")
             return True
             
         except Exception as e:
@@ -397,10 +437,19 @@ def ikon_ellenorzes(ikon):
             
 def main():
     """Fő program"""
-    st.title('🎴 Kártyacsomag szerkesztő a PairFect-hez V3')
-    
     if not check_password():
         return
+        
+    st.title('🎴 Kártyacsomag Készítő')
+    
+    # RSS Feed generáló gomb
+    if st.button("🔄 RSS Feed újragenerálása"):
+        config = load_config()
+        if config:
+            if save_config(config):
+                st.success("RSS Feed sikeresen újragenerálva!")
+            else:
+                st.error("Hiba történt az RSS Feed generálása során!")
     
     config = load_config()
     if not config:
