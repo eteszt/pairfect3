@@ -213,17 +213,32 @@ def generate_rss_feed(config):
     <language>hu</language>"""
 
     # Az utolsó 10 játék kiválasztása
-    games = sorted(config.get("games", []), key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
+    games = sorted(config.get("games", []), key=lambda x: x.get("releaseDate", ""), reverse=True)[:10]
     
     for game in games:
-        pub_date = datetime.fromtimestamp(game.get("timestamp", 0)).strftime("%a, %d %b %Y %H:%M:%S +0000")
+        # Dátum konvertálása
+        try:
+            pub_date = datetime.strptime(game.get("releaseDate", ""), "%Y-%m-%d").strftime("%a, %d %b %Y %H:%M:%S +0000")
+        except:
+            pub_date = datetime.now().strftime("%a, %d %b %Y %H:%M:%S +0000")
+            
+        # Játék nevének és leírásának kinyerése a txt fájlból
+        try:
+            content = load_card_pack(game.get("file", ""))
+            lines = content.split('\n')
+            game_name = lines[0].strip() if len(lines) > 0 else game.get("file", "").replace(".txt", "")
+            game_description = lines[1].strip() if len(lines) > 1 else ""
+        except:
+            game_name = game.get("file", "").replace(".txt", "")
+            game_description = ""
+        
         rss_content += f"""
     <item>
-      <title>{game.get("name", "")}</title>
-      <link>https://pairfect.hu/game/{game.get("id", "")}</link>
-      <description>{game.get("description", "")}</description>
+      <title>{game_name}</title>
+      <link>https://pairfect.hu/game/{game.get("file", "").replace(".txt", "")}</link>
+      <description>{game_description} ({config['categories'][game.get('category', '')]['name']} kategória, nehézség: {game.get('defaultDifficulty', 1)})</description>
       <pubDate>{pub_date}</pubDate>
-      <guid>{game.get("id", "")}</guid>
+      <guid>{game.get("file", "").replace(".txt", "")}</guid>
     </item>"""
 
     rss_content += """
