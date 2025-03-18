@@ -115,10 +115,23 @@ def load_config():
         config_buffer = io.BytesIO()
         
         try:
+            # Debug: Kiírjuk az aktuális FTP könyvtárat
+            current_dir = ftp.pwd()
+            st.info(f"FTP kezdő könyvtár: {current_dir}")
+            
             # Belépés a public_html/games mappába
             ftp.cwd('public_html/games')
             
+            # Debug: Kiírjuk az új könyvtárat
+            new_dir = ftp.pwd()
+            st.info(f"FTP célkönyvtár: {new_dir}")
+            
+            # Debug: Listázzuk a könyvtár tartalmát
+            st.write("Könyvtár tartalma:")
+            st.write(ftp.nlst())
+            
             # data.json letöltése
+            st.info(f"data.json betöltése innen: ftp://{FTP_HOST}{new_dir}/data.json")
             ftp.retrbinary('RETR data.json', config_buffer.write)
             config_buffer.seek(0)
             config = json.loads(config_buffer.read().decode('utf-8'))
