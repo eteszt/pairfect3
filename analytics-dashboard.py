@@ -14,7 +14,7 @@ import os
 FTP_HOST = "ftp.pairfect.hu"
 FTP_USER = "pairfect"
 FTP_PASS = "65Q6sjIhrF"
-DB_PATH = "api/db/gamedata.db"
+DB_PATH = "/public_html/api/db/gamedata.db"  # Teljes útvonal
 
 # Oldal konfigurálása
 st.set_page_config(
