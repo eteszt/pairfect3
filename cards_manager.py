@@ -116,12 +116,18 @@ def load_config():
         
         try:
             # Belépés a public_html/games mappába
-            ftp.cwd('public_html')
-            ftp.cwd('games')
+            ftp.cwd('public_html/games')
             
+            # data.json letöltése
             ftp.retrbinary('RETR data.json', config_buffer.write)
             config_buffer.seek(0)
             config = json.loads(config_buffer.read().decode('utf-8'))
+            
+            # FTP kapcsolat bezárása
+            ftp.quit()
+            
+            return config
+            
         except Exception as e:
             st.warning("Konfiguráció nem található, alapértelmezett beállítások létrehozása...")
             config = {
@@ -158,30 +164,57 @@ def load_config():
                 }
             }
             
-            json_str = json.dumps(config, indent=4, ensure_ascii=False)
-            with io.BytesIO(json_str.encode('utf-8')) as buffer:
-                ftp.storbinary('STOR data.json', buffer)
-        
-        ftp.quit()
-        return config
-        
+            # Ha nem létezik a data.json, létrehozzuk az alapértelmezett konfigurációval
+            try:
+                json_str = json.dumps(config, indent=4, ensure_ascii=False)
+                json_buffer = io.BytesIO(json_str.encode('utf-8'))
+                
+                ftp.cwd('public_html/games')
+                ftp.storbinary('STOR data.json', json_buffer)
+                
+                # FTP kapcsolat bezárása
+                ftp.quit()
+                
+                st.success("Alapértelmezett konfiguráció létrehozva az FTP szerveren.")
+            except Exception as e:
+                st.error(f"Nem sikerült létrehozni az alapértelmezett konfigurációt az FTP szerveren: {str(e)}")
+            
+            return config
+            
     except Exception as e:
-        st.error(f"Hiba a konfiguráció betöltése során: {str(e)}")
+        st.error(f"FTP kapcsolódási hiba: {str(e)}")
         return None
 
 def save_config(config):
-    """JSON konfiguráció mentése FTP-re"""
-    ftp = FTP(FTP_HOST)
-    ftp.login(user=FTP_USER, passwd=FTP_PASS)
-    
-    # Belépés a public_html/games mappába
-    ftp.cwd('public_html')
-    ftp.cwd('games')
-    
-    json_str = json.dumps(config, indent=4, ensure_ascii=False)
-    with io.BytesIO(json_str.encode('utf-8')) as buffer:
-        ftp.storbinary('STOR data.json', buffer)
-    ftp.quit()
+    """Konfiguráció mentése az FTP szerverre"""
+    try:
+        ftp = FTP(FTP_HOST)
+        ftp.login(user=FTP_USER, passwd=FTP_PASS)
+        
+        try:
+            # JSON string létrehozása
+            json_str = json.dumps(config, indent=4, ensure_ascii=False)
+            json_buffer = io.BytesIO(json_str.encode('utf-8'))
+            
+            # Belépés a public_html/games mappába
+            ftp.cwd('public_html/games')
+            
+            # data.json feltöltése
+            ftp.storbinary('STOR data.json', json_buffer)
+            
+            # FTP kapcsolat bezárása
+            ftp.quit()
+            
+            st.success("Konfiguráció sikeresen mentve az FTP szerverre.")
+            return True
+            
+        except Exception as e:
+            st.error(f"Nem sikerült menteni a konfigurációt az FTP szerverre: {str(e)}")
+            return False
+            
+    except Exception as e:
+        st.error(f"FTP kapcsolódási hiba: {str(e)}")
+        return False
 
 def save_card_pack(filename, content):
     """Kártyacsomag mentése FTP-re"""
