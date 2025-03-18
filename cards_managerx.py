@@ -442,15 +442,6 @@ def main():
         
     st.title('🎴 Kártyacsomag Készítő')
     
-    # RSS Feed generáló gomb
-    if st.button("🔄 RSS Feed újragenerálása"):
-        config = load_config()
-        if config:
-            if save_config(config):
-                st.success("RSS Feed sikeresen újragenerálva!")
-            else:
-                st.error("Hiba történt az RSS Feed generálása során!")
-    
     config = load_config()
     if not config:
         st.error("Nem sikerült a konfigurációs fájl betöltése!")
@@ -466,6 +457,15 @@ def main():
         categories,
         format_func=lambda x: config['categories'][x]['name']
     )
+    
+    # RSS Feed generáló gomb
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("🔄 RSS Feed újragenerálása", use_container_width=True):
+            if save_config(config):
+                st.success("RSS Feed sikeresen újragenerálva!")
+            else:
+                st.error("Hiba történt az RSS Feed generálása során!")
     
     edit_mode = st.checkbox('Meglévő csomag szerkesztése')
     
