@@ -138,71 +138,13 @@ def load_config():
         config_buffer = io.BytesIO()
         
         try:
-            # Debug: Kiírjuk az aktuális FTP könyvtárat
-            current_dir = ftp.pwd()
-            st.info(f"FTP kezdő könyvtár: {current_dir}")
-            
-            # Könyvtárak létrehozása, ha nem léteznek
-            create_directory_if_not_exists(ftp, '/public_html/games')
-            
             # Belépés a public_html/games mappába
-            ftp.cwd('/public_html/games')
+            ftp.cwd('public_html/games')
             
-            # Debug: Kiírjuk az új könyvtárat
-            new_dir = ftp.pwd()
-            st.info(f"FTP célkönyvtár: {new_dir}")
-            
-            # Debug: Listázzuk a könyvtár tartalmát
-            st.write("Könyvtár tartalma:")
-            st.write(ftp.nlst())
-            
-            try:
-                # data.json letöltése
-                st.info(f"data.json betöltése innen: ftp://{FTP_HOST}{new_dir}/data.json")
-                ftp.retrbinary('RETR data.json', config_buffer.write)
-                config_buffer.seek(0)
-                config = json.loads(config_buffer.read().decode('utf-8'))
-            except:
-                st.warning("Konfiguráció nem található, alapértelmezett beállítások létrehozása...")
-                config = {
-                    "games": [],
-                    "categories": {
-                        "math": {
-                            "name": "Tudomány",
-                            "color": "from-blue-500 to-purple-500"
-                        },
-                        "history": {
-                            "name": "Történelem",
-                            "color": "from-orange-500 to-red-500"
-                        },
-                        "language": {
-                            "name": "Nyelvtanulás",
-                            "color": "from-green-500 to-teal-500"
-                        },
-                        "literature": {
-                            "name": "Irodalom",
-                            "color": "from-pink-500 to-rose-500"
-                        },
-                        "programming": {
-                            "name": "Informatika",
-                            "color": "from-violet-500 to-purple-500"
-                        },
-                        "art": {
-                            "name": "Művészet",
-                            "color": "from-yellow-500 to-orange-500"
-                        },
-                        "music": {
-                            "name": "Szabadidő",
-                            "color": "from-red-500 to-pink-500"
-                        }
-                    }
-                }
-                
-                # Alapértelmezett konfiguráció mentése
-                json_str = json.dumps(config, indent=4, ensure_ascii=False)
-                json_buffer = io.BytesIO(json_str.encode('utf-8'))
-                ftp.storbinary('STOR data.json', json_buffer)
-                st.success("Alapértelmezett konfiguráció létrehozva az FTP szerveren.")
+            # data.json letöltése
+            ftp.retrbinary('RETR data.json', config_buffer.write)
+            config_buffer.seek(0)
+            config = json.loads(config_buffer.read().decode('utf-8'))
             
             # FTP kapcsolat bezárása
             ftp.quit()
@@ -210,8 +152,51 @@ def load_config():
             return config
             
         except Exception as e:
-            st.error(f"Hiba a könyvtár kezelése során: {str(e)}")
-            return None
+            st.warning("Konfiguráció nem található, alapértelmezett beállítások létrehozása...")
+            config = {
+                "games": [],
+                "categories": {
+                    "math": {
+                        "name": "Tudomány",
+                        "color": "from-blue-500 to-purple-500"
+                    },
+                    "history": {
+                        "name": "Történelem",
+                        "color": "from-orange-500 to-red-500"
+                    },
+                    "language": {
+                        "name": "Nyelvtanulás",
+                        "color": "from-green-500 to-teal-500"
+                    },
+                    "literature": {
+                        "name": "Irodalom",
+                        "color": "from-pink-500 to-rose-500"
+                    },
+                    "programming": {
+                        "name": "Informatika",
+                        "color": "from-violet-500 to-purple-500"
+                    },
+                    "art": {
+                        "name": "Művészet",
+                        "color": "from-yellow-500 to-orange-500"
+                    },
+                    "music": {
+                        "name": "Szabadidő",
+                        "color": "from-red-500 to-pink-500"
+                    }
+                }
+            }
+            
+            # Alapértelmezett konfiguráció mentése
+            json_str = json.dumps(config, indent=4, ensure_ascii=False)
+            json_buffer = io.BytesIO(json_str.encode('utf-8'))
+            ftp.storbinary('STOR data.json', json_buffer)
+            st.success("Alapértelmezett konfiguráció létrehozva.")
+            
+            # FTP kapcsolat bezárása
+            ftp.quit()
+            
+            return config
             
     except Exception as e:
         st.error(f"FTP kapcsolódási hiba: {str(e)}")
